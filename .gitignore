@@ -1,4 +1,4 @@
 /build/*
 a.out
 instructure.txt
-/tests/*
+/include/colors.hpp
