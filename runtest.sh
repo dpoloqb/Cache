@@ -1,21 +1,26 @@
 #!/bin/bash
 
 TEST=$1
+EXECUTABLE=$2
+ANS_PREFIX=$3
 
-ANS=${TEST%.*}.ans
-NAME=$(basename $TEST)
+TEST_NAME=$(basename $TEST .dat)
+ANS=${TEST%.*}.${ANS_PREFIX}.ans
 
-eval ./main.x < $TEST > $NAME.log
+echo "Running test: $TEST_NAME with $EXECUTABLE"
+echo "Expected answers: $ANS"
 
-DIFF=$(diff -w $NAME.log ${ANS})
+$EXECUTABLE < $TEST > ${TEST_NAME}.log
+
+DIFF=$(diff -w ${TEST_NAME}.log ${ANS})
 
 if [ $? -ne 0 ]; then
-  echo "" >> $NAME.log
-  echo "Diff is:" >> $NAME.log
-  echo "$DIFF" >> $NAME.log
-  echo "Test ${NAME} failed, see ${NAME}.log"
+  echo "" >> ${TEST_NAME}.log
+  echo "Diff is:" >> ${TEST_NAME}.log
+  echo "$DIFF" >> ${TEST_NAME}.log
+  echo "Test ${TEST_NAME} for ${EXECUTABLE} failed, see ${TEST_NAME}.log"
   exit 1
 else
-  rm $NAME.log
-  echo "Test ${NAME} passed"
+  rm ${TEST_NAME}.log
+  echo "Test ${TEST_NAME} for ${EXECUTABLE} passed"
 fi

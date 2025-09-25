@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cassert>
 #include <vector>
-#include "include/cache.hpp"
+#include "cache.hpp"
 
 int slow_get_page_int(int key) { return key; }
 
@@ -13,6 +13,7 @@ int main ()
 
     std::cin >> cacheSize >> nItems;
     assert(std::cin.good());
+    
     caches::TwoQueuesCache<int> c{cacheSize};
 
     for (int i = 0; i < nItems; ++i)
