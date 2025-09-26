@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cassert>
 #include <vector>
-#include "cache.hpp"
+#include "caches.hpp"
 
 int slow_get_page_int(int key) { return key; }
 

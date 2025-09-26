@@ -15,7 +15,6 @@ namespace caches
     template <typename T, typename KeyT = int>
     struct TwoQueuesCache
     {
-    
     private:
 
         size_t cacheSize_;
@@ -119,8 +118,8 @@ namespace caches
 
     public:
 
-        TwoQueuesCache(size_t cacheSize) : cacheSize_(cacheSize), A1in_size_(cacheSize / 2), Am_size_(cacheSize - A1in_size_),
-                                     A1out_size_(cacheSize * 2) {}
+        TwoQueuesCache(size_t cacheSize) : cacheSize_(cacheSize), A1in_size_(cacheSize / 2),
+                                            Am_size_(cacheSize - A1in_size_), A1out_size_(cacheSize * 2) {}
 
         template <typename F>
         bool lookup_update(KeyT key, F slow_get_page)
@@ -151,29 +150,30 @@ namespace caches
 
         std::unordered_map<KeyT, ListIt> hash;
 
-        std::vector<KeyT> requests_; //последовательность запросов const?
-        std::unordered_map<KeyT, std::vector<size_t>> key_positions; //позиции ключей в requests
+        std::vector<KeyT> requests_;
+        std::unordered_map<KeyT, std::vector<size_t>> key_positions;
 
         void find_victim()
         {  
             ListIt victim = cache.end();
             size_t farthest_use = 0;
 
-            for (auto it = cache.begin(); it != cache.end(); ++it) //проходимся по всему кэшу
-            { //мб ещё искать в hash повторные элементы 
+            for (auto it = cache.begin(); it != cache.end(); ++it)
+            { 
                 KeyT cached_key = it->first;
 
-                auto it_position = key_positions.find(cached_key);
-                if (it_position == key_positions.end())
+                auto cached_key_position = key_positions.find(cached_key);
+
+                if (cached_key_position == key_positions.end())
                     throw std::logic_error("Inconsistent state: cached key not found in key_positions");
 
-                const auto& currentItPositions = it_position->second; //опять вектор с позициями кэшированного ключа в requests
+                const auto& currentKeyPositions = cached_key_position->second;
 
-                auto nextItUse = std::upper_bound(currentItPositions.begin(), currentItPositions.end(), currentIndex);
+                auto nextKeyUse = std::upper_bound(currentKeyPositions.begin(), currentKeyPositions.end(), currentIndex);
 
-                size_t next_use = (nextItUse == currentItPositions.end())
+                size_t next_use = (nextKeyUse == currentKeyPositions.end())
                     ? std::numeric_limits<size_t>::max()
-                    : *nextItUse;
+                    : *nextKeyUse;
                 
                 if (next_use > farthest_use)
                 {
@@ -191,67 +191,58 @@ namespace caches
 
     public:
 
-    IdealCache(size_t cacheSize, const std::vector<KeyT>& requests) : cacheSize_(cacheSize), requests_(requests)
-    {
-        for (size_t i = 0; i < requests_.size(); ++i)
+        IdealCache(size_t cacheSize, const std::vector<KeyT>& requests) : cacheSize_(cacheSize), requests_(requests)
         {
-            key_positions[requests_[i]].push_back(i);
-        }
-
-        #ifndef NDEBUG
-        for (const auto& [key, vec] : key_positions)
-        {
-            assert(std::is_sorted(vec.begin(), vec.end()) && "key_positions must be sorted");
-        }
-        #endif
-    }
-
-    template <typename F>
-    bool lookup_update(KeyT key, F slow_get_page)
-    {
-        if (currentIndex >= requests_.size())
-            throw std::out_of_range("No more requests to process");
-        
-
-        auto hit_cache = hash.find(key);
-        if (hit_cache != hash.end())
-        {
-            ++currentIndex;
-            //cache.splice(cache.begin(), cache, hit->second);
-            return true;
-        }
-
-        const auto& currentKeyPositions = (key_positions.find(key))->second; //отcортированная копия вектора (не будем менять)
-
-        //std::cout << std::typeid(currentKeyPositions);
-
-        auto nextKeyUse = std::upper_bound(currentKeyPositions.begin(), currentKeyPositions.end(), currentIndex); //ищем первую позицию, больше currentIndex
-        //если upper_bound ничего не нашёл, то он возвращает 0. Надо обработать этот случай:
-
-        size_t next_use = (nextKeyUse == currentKeyPositions.end())
-                    ? std::numeric_limits<size_t>::max()
-                    : *nextKeyUse;
-
-        if (next_use <= currentIndex)
-            throw std::logic_error("Next key usage can't be earlier than current request");
-
-        if (next_use != std::numeric_limits<size_t>::max()) //если где-то будет повторное использование, то надо решить, кого вытеснять из текущего кэша
-        {
-            if (cache.size() == cacheSize_)
+            for (size_t i = 0; i < requests_.size(); ++i)
             {
-               find_victim(); //находит и удаляет элемент
+                key_positions[requests_[i]].push_back(i);
             }
-        cache.emplace_front(key, slow_get_page(key)); //добавляем новый элемент
-        hash.emplace(key, cache.begin()); //скорей всего можно юзать hash[key] = cache.begin(); 
 
+            #ifndef NDEBUG
+            for (const auto& [key, vec] : key_positions)
+            {
+                assert(std::is_sorted(vec.begin(), vec.end()) && "key_positions must be sorted");
+            }
+            #endif
         }
 
-        //нет повторного использования входящего request'а => не берём
-        ++currentIndex;
-        return false;
+        template <typename F>
+        bool lookup_update(KeyT key, F slow_get_page)
+        {
+            if (currentIndex >= requests_.size())
+                throw std::out_of_range("No more requests to process");
+            
+            auto hit_cache = hash.find(key);
+            if (hit_cache != hash.end())
+            {
+                ++currentIndex;
+                return true;
+            }
 
-        
-    }
+            const auto& currentKeyPositions = (key_positions.find(key))->second;
 
+            auto nextKeyUse = std::upper_bound(currentKeyPositions.begin(), currentKeyPositions.end(), currentIndex);
+
+            size_t next_use = (nextKeyUse == currentKeyPositions.end())
+                        ? std::numeric_limits<size_t>::max()
+                        : *nextKeyUse;
+
+            if (next_use <= currentIndex)
+                throw std::logic_error("Next key usage can't be earlier than current request");
+
+            if (next_use != std::numeric_limits<size_t>::max())
+            {
+                if (cache.size() == cacheSize_)
+                {
+                find_victim();
+                }
+            cache.emplace_front(key, slow_get_page(key));
+            hash.emplace(key, cache.begin());
+            }
+
+            ++currentIndex;
+            return false;
+            
+        }
     };
 }

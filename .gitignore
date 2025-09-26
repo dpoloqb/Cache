@@ -1,4 +1,2 @@
 /build/*
-a.out
-instructure.txt
-/include/colors.hpp
+.vscode
