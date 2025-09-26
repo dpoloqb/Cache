@@ -1,31 +1,41 @@
 # Cache Algorithms Implementation
 
-This project provides C++ implementations of two cache replacement algorithms: the 2Q Cache and the Ideal Cache. The 2Q Cache is an efficient approximation of the LRU-2 algorithm, designed to handle both recency and frequency in page accesses. The Ideal Cache is an optimal (but impractical for real-time use) algorithm that assumes knowledge of future requests to make eviction decisions.
+This project includes C++ implementations of two cache replacement algorithms: 2Q Cache and Ideal Cache. The 2Q Cache algorithm is an efficient approximation of LRU-2, designed to account for both recency and frequency of page accesses. The Ideal Cache represents an optimal (though impractical for real-world use) algorithm that makes eviction decisions based on perfect knowledge of future requests.
 
-## Features
+# Features
 
-- #### 2Q Cache:
-    - Uses three queues: A1_in (recently accessed), Am (frequently accessed), and A1_out (ghost queue for evicted from A1_in).
-    - Supports generic key and value types (default key is int).
-- #### Ideal Cache:
-    - Evicts the page that will be requested furthest in the future (Belady's optimal algorithm).
-    - Requires the full sequence of requests in advance.
-    - Supports generic key and value types (default key is int).
-- #### Testing:
-    - Tests for both caches with expected hit/miss sequences.
+- **2Q Cache:**
+  - Uses three internal queues:
+    - `A1_in` — holds recently accessed pages.
+    - `Am` — stores frequently accessed pages (promoted from `A1_in` on a cache hit).
+    - `A1_out` — a “ghost” queue that tracks pages evicted from `A1_in`.
+  - Supports generic key and value types (defaults to `int` for keys).
 
-## Algorithm Details
+- **Ideal Cache:**
+  - Evicts the page that will be used farthest in the future (or not used at all), following Belady’s optimal algorithm.
+  - Requires full knowledge of the entire future request sequence.
+  - Works with generic key and value types (default key type is `int`).
 
-### 2Q Cache
-- **A1_in**: FIFO queue for new pages.
-- **Am**: LRU queue for frequently accessed pages (promoted from A1_in on hit).
-- **A1_out**: Ghost queue to track evicted pages from A1_in; promotes to Am if hit.
-- Eviction: From A1_in to A1_out, or from Am if full.
+- **Testing:**
+  - Includes end-to-end tests for both cache implementations, verifying expected hit quantaties.
 
-### Ideal Cache
-- Assumes perfect knowledge of future requests.
-- On eviction, removes the page with the furthest next access (or never accessed).
-- Used as a benchmark for cache efficiency.
+# Algorithm Details
+
+## 2Q Cache
+
+- **`A1_in`**: A FIFO queue for newly inserted pages.
+- **`Am`**: An LRU-style queue for pages accessed more than once; pages move here from `A1_in` upon a second access.
+- **`A1_out`**: A ghost queue that retains identifiers of pages recently evicted from `A1_in`. If a page in `A1_out` is accessed again, it is promoted to `Am`.
+- **Eviction Policy**:  
+  When the cache is full:
+  - If `A1_in` exceeds its size limit, its oldest page is moved to `A1_out`.
+  - If total capacity is still exceeded, pages are evicted from `Am` using an LRU strategy.
+
+## Ideal Cache
+
+- Assumes perfect foresight — the complete sequence of future accesses is known in advance.
+- On eviction, removes the page whose next use occurs farthest in the future (or never occurs).
+- Not implementable in real systems but serves as an optimal theoretical benchmark for evaluating practical caching algorithms.
 
 ## Requirements
 - C++20 or later.
@@ -33,10 +43,12 @@ This project provides C++ implementations of two cache replacement algorithms: t
 - No external dependencies.
 
 ## Building and Running
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/dpoloqb/Cache
 cd Cache
+```
 
 2. Configure and Build:
 ```bash
@@ -117,4 +129,3 @@ Cache/
 ├── runtest.sh
 └── README.md
 ```
-
