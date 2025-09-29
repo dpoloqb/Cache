@@ -1,248 +1,208 @@
 #pragma once
 
-#include <list>
-#include <unordered_map>
-#include <iostream>
-#include <vector>
 #include <algorithm>
-#include <limits>
 #include <cassert>
-#include <ostream>
+#include <limits>
+#include <list>
+#include <stdexcept>
+#include <unordered_map>
+#include <vector>
 
-namespace caches
-{
+namespace caches {
 
-    template <typename T, typename KeyT = int>
-    struct TwoQueuesCache
-    {
-    private:
+template <typename T, typename KeyT = int> struct TwoQueuesCache {
+private:
+  size_t cacheSize_;
+  size_t A1in_size_;
+  size_t Am_size_;
+  size_t A1out_size_;
 
-        size_t cacheSize_;
-        size_t A1in_size_;
-        size_t Am_size_;
-        size_t A1out_size_;
-        
-        std::list<std::pair<KeyT, T>> cache_Am;
-        std::list<std::pair<KeyT, T>> cache_A1in;
-        std::list<KeyT> cache_A1out;
+  std::list<std::pair<KeyT, T>> cache_Am;
+  std::list<std::pair<KeyT, T>> cache_A1in;
+  std::list<KeyT> cache_A1out;
 
-        using ListIt = typename std::list<std::pair<KeyT, T>>::iterator;
-        using A1outIt = typename std::list<KeyT>::iterator;
+  using ListIt = typename std::list<std::pair<KeyT, T>>::iterator;
+  using A1outIt = typename std::list<KeyT>::iterator;
 
-        std::unordered_map<KeyT, ListIt> hash_Am;
-        std::unordered_map<KeyT, ListIt> hash_A1in;
-        std::unordered_map<KeyT, A1outIt> hash_A1out;
-        
-        template <typename QTy>
-        bool isFull(QTy& Q, size_t refSize) const
-        { return (Q.size() == refSize); }
+  std::unordered_map<KeyT, ListIt> hash_Am;
+  std::unordered_map<KeyT, ListIt> hash_A1in;
+  std::unordered_map<KeyT, A1outIt> hash_A1out;
 
-        bool check_Am(KeyT key)
-        {
-            auto hit_Am = hash_Am.find(key);
-            
-            if (hit_Am != hash_Am.end())
-            {
+  template <typename QTy> inline bool isFull(QTy &Q, size_t refSize) const {
+    return (Q.size() == refSize);
+  }
 
-                auto eltit_Am = hit_Am->second;
-                cache_Am.splice(cache_Am.begin(), cache_Am, eltit_Am);
+  bool check_Am(KeyT key) {
+    auto hit_Am = hash_Am.find(key);
 
-                return true;
-            }
+    if (hit_Am != hash_Am.end()) {
 
-            return false;
-        }
+      auto eltit_Am = hit_Am->second;
+      cache_Am.splice(cache_Am.begin(), cache_Am, eltit_Am);
 
-        bool check_A1in(KeyT key)
-        {
-            auto hit_A1in = hash_A1in.find(key);
+      return true;
+    }
 
-            if (hit_A1in != hash_A1in.end())
-            {
+    return false;
+  }
 
-                if (isFull(cache_Am, Am_size_))
-                {
-                    hash_Am.erase(cache_Am.back().first); 
-                    cache_Am.pop_back();
-                }
-                cache_Am.emplace_front(*(hit_A1in->second));
-                hash_Am.emplace(key, cache_Am.begin()); 
-                hash_A1in.erase(hit_A1in->first);
-                cache_A1in.erase(hit_A1in->second);
+  bool check_A1in(KeyT key) {
+    auto hit_A1in = hash_A1in.find(key);
 
-                return true;
-            }
+    if (hit_A1in != hash_A1in.end()) {
 
-            return false;
-        }
+      if (isFull(cache_Am, Am_size_)) {
+        hash_Am.erase(cache_Am.back().first);
+        cache_Am.pop_back();
+      }
+      cache_Am.emplace_front(*(hit_A1in->second));
+      hash_Am.emplace(key, cache_Am.begin());
+      hash_A1in.erase(hit_A1in->first);
+      cache_A1in.erase(hit_A1in->second);
 
-        template <typename F>
-        bool check_A1out(KeyT key, F slow_get_page)
-        {
-            auto hit_A1out = hash_A1out.find(key);
+      return true;
+    }
 
-            if (hit_A1out != hash_A1out.end()) 
-            {
-                if (isFull(cache_Am, Am_size_))
-                {
-                    hash_Am.erase(cache_Am.back().first); 
-                    cache_Am.pop_back();
-                }
-                cache_Am.emplace_front(key, slow_get_page(key)); 
-                hash_Am.emplace(key, cache_Am.begin());
-                hash_A1out.erase(hit_A1out->first);
-                cache_A1out.erase(hit_A1out->second);
-                return false;
-            }
-            return true;
-        }
+    return false;
+  }
 
-        template <typename F>
-        void get_new_elem(KeyT key, F slow_get_page)
-        {
-            if (isFull(cache_A1in, A1in_size_))
-            {
-                if (isFull(cache_A1out, A1out_size_))
-                {
-                    hash_A1out.erase(cache_A1out.back());
-                    cache_A1out.pop_back();
-                }
-                cache_A1out.emplace_front(cache_A1in.back().first); 
-                hash_A1out.emplace(cache_A1in.back().first, cache_A1out.begin()); 
-                hash_A1in.erase(cache_A1in.back().first);
-                cache_A1in.pop_back();
-            }
-            cache_A1in.emplace_front(key, slow_get_page(key)); 
-            hash_A1in.emplace(key, cache_A1in.begin());
-        }
+  template <typename F> bool check_A1out(KeyT key, F slow_get_page) {
+    auto hit_A1out = hash_A1out.find(key);
 
-    public:
+    if (hit_A1out != hash_A1out.end()) {
+      if (isFull(cache_Am, Am_size_)) {
+        hash_Am.erase(cache_Am.back().first);
+        cache_Am.pop_back();
+      }
+      cache_Am.emplace_front(key, slow_get_page(key));
+      hash_Am.emplace(key, cache_Am.begin());
+      hash_A1out.erase(hit_A1out->first);
+      cache_A1out.erase(hit_A1out->second);
 
-        TwoQueuesCache(size_t cacheSize) : cacheSize_(cacheSize), A1in_size_(cacheSize / 2),
-                                            Am_size_(cacheSize - A1in_size_), A1out_size_(cacheSize * 2) {}
+      return false;
+    }
+    return true;
+  }
 
-        template <typename F>
-        bool lookup_update(KeyT key, F slow_get_page)
-        {
-            if (check_Am(key))
-                return true;
-            if (check_A1in(key))
-                return true;
-            if (!check_A1out(key, slow_get_page))
-                return false;
+  template <typename F> void get_new_elem(KeyT key, F slow_get_page) {
+    if (isFull(cache_A1in, A1in_size_)) {
+      if (isFull(cache_A1out, A1out_size_)) {
+        hash_A1out.erase(cache_A1out.back());
+        cache_A1out.pop_back();
+      }
+      cache_A1out.emplace_front(cache_A1in.back().first);
+      hash_A1out.emplace(cache_A1in.back().first, cache_A1out.begin());
+      hash_A1in.erase(cache_A1in.back().first);
+      cache_A1in.pop_back();
+    }
+    cache_A1in.emplace_front(key, slow_get_page(key));
+    hash_A1in.emplace(key, cache_A1in.begin());
+  }
 
-            get_new_elem(key, slow_get_page);
-            return false;
-        }
-    };
+public:
+  TwoQueuesCache(size_t cacheSize)
+      : cacheSize_(cacheSize), A1in_size_(cacheSize / 2),
+        Am_size_(cacheSize - A1in_size_), A1out_size_(cacheSize * 2) {}
 
-    template <typename T, typename KeyT = int>
-    struct IdealCache
-    {
-    private:
+  template <typename F> bool lookup_update(KeyT key, F slow_get_page) {
+    if (check_Am(key))
+      return true;
+    if (check_A1in(key))
+      return true;
+    if (!check_A1out(key, slow_get_page))
+      return false;
 
-        size_t cacheSize_;
-        size_t currentIndex = 0;
+    get_new_elem(key, slow_get_page);
+    return false;
+  }
+};
 
-        std::list<std::pair<KeyT, T>> cache;
+template <typename T, typename KeyT = int> struct IdealCache {
+private:
+  size_t cacheSize_;
+  size_t currentIndex = 0;
 
-        using ListIt = typename std::list<std::pair<KeyT, T>>::iterator;
+  std::list<std::pair<KeyT, T>> cache;
 
-        std::unordered_map<KeyT, ListIt> hash;
+  using ListIt = typename std::list<std::pair<KeyT, T>>::iterator;
+  using ConstListIt = typename std::list<std::pair<KeyT, T>>::const_iterator;
 
-        std::vector<KeyT> requests_;
-        std::unordered_map<KeyT, std::vector<size_t>> key_positions;
+  std::unordered_map<KeyT, ListIt> hash;
 
-        void find_victim()
-        {  
-            ListIt victim = cache.end();
-            size_t farthest_use = 0;
+  std::vector<KeyT> requests_;
+  std::unordered_map<KeyT, std::vector<size_t>> key_positions;
 
-            for (auto it = cache.begin(); it != cache.end(); ++it)
-            { 
-                KeyT cached_key = it->first;
+  ConstListIt find_victim() const {
+    ConstListIt victim = cache.end();
+    size_t farthest_use = 0;
 
-                auto cached_key_position = key_positions.find(cached_key);
+    for (auto it = cache.begin(); it != cache.end(); ++it) {
+      KeyT cached_key = it->first;
 
-                if (cached_key_position == key_positions.end())
-                    throw std::logic_error("Inconsistent state: cached key not found in key_positions");
+      auto cached_key_position = key_positions.find(cached_key);
 
-                const auto& currentKeyPositions = cached_key_position->second;
+      assert(cached_key_position != key_positions.end());
 
-                auto nextKeyUse = std::upper_bound(currentKeyPositions.begin(), currentKeyPositions.end(), currentIndex);
+      const auto &currentKeyPositions = cached_key_position->second;
 
-                size_t next_use = (nextKeyUse == currentKeyPositions.end())
-                    ? std::numeric_limits<size_t>::max()
-                    : *nextKeyUse;
-                
-                if (next_use > farthest_use)
-                {
-                    farthest_use = next_use;
-                    victim = it;
-                }
+      auto nextKeyUse = std::upper_bound(
+          currentKeyPositions.begin(), currentKeyPositions.end(), currentIndex);
 
-                if (victim == cache.end())
-                    throw std::invalid_argument("Failed to select victim for eviction");          
-            }
+      size_t next_use = (nextKeyUse == currentKeyPositions.end())
+                            ? std::numeric_limits<size_t>::max()
+                            : *nextKeyUse;
 
-            hash.erase(victim->first);
-            cache.erase(victim);
-        }
+      if (next_use > farthest_use) {
+        farthest_use = next_use;
+        victim = it;
+      }
 
-    public:
+      assert(victim != cache.end());
+    }
+    return victim;
+  }
 
-        IdealCache(size_t cacheSize, const std::vector<KeyT>& requests) : cacheSize_(cacheSize), requests_(requests)
-        {
-            for (size_t i = 0; i < requests_.size(); ++i)
-            {
-                key_positions[requests_[i]].push_back(i);
-            }
+public:
+  IdealCache(size_t cacheSize, const std::vector<KeyT> &requests)
+      : cacheSize_(cacheSize), requests_(requests) {
+    for (size_t i = 0; i < requests_.size(); ++i) {
+      key_positions[requests_[i]].push_back(i);
+    }
+  }
 
-            #ifndef NDEBUG
-            for (const auto& [key, vec] : key_positions)
-            {
-                assert(std::is_sorted(vec.begin(), vec.end()) && "key_positions must be sorted");
-            }
-            #endif
-        }
+  template <typename F> bool lookup_update(KeyT key, F slow_get_page) {
+    if (currentIndex >= requests_.size())
+      throw std::out_of_range("No more requests to process");
 
-        template <typename F>
-        bool lookup_update(KeyT key, F slow_get_page)
-        {
-            if (currentIndex >= requests_.size())
-                throw std::out_of_range("No more requests to process");
-            
-            auto hit_cache = hash.find(key);
-            if (hit_cache != hash.end())
-            {
-                ++currentIndex;
-                return true;
-            }
+    auto hit_cache = hash.find(key);
+    if (hit_cache != hash.end()) {
+      ++currentIndex;
+      return true;
+    }
 
-            const auto& currentKeyPositions = (key_positions.find(key))->second;
+    const auto &currentKeyPositions = (key_positions.find(key))->second;
 
-            auto nextKeyUse = std::upper_bound(currentKeyPositions.begin(), currentKeyPositions.end(), currentIndex);
+    auto nextKeyUse = std::upper_bound(currentKeyPositions.begin(),
+                                       currentKeyPositions.end(), currentIndex);
 
-            size_t next_use = (nextKeyUse == currentKeyPositions.end())
-                        ? std::numeric_limits<size_t>::max()
-                        : *nextKeyUse;
+    size_t next_use = (nextKeyUse == currentKeyPositions.end())
+                          ? std::numeric_limits<size_t>::max()
+                          : *nextKeyUse;
 
-            if (next_use <= currentIndex)
-                throw std::logic_error("Next key usage can't be earlier than current request");
+    assert(next_use > currentIndex);
 
-            if (next_use != std::numeric_limits<size_t>::max())
-            {
-                if (cache.size() == cacheSize_)
-                {
-                find_victim();
-                }
-            cache.emplace_front(key, slow_get_page(key));
-            hash.emplace(key, cache.begin());
-            }
+    if (next_use != std::numeric_limits<size_t>::max()) {
+      if (cache.size() == cacheSize_) {
+        ConstListIt victim = find_victim();
+        hash.erase(victim->first);
+        cache.erase(victim);
+      }
+      cache.emplace_front(key, slow_get_page(key));
+      hash.emplace(key, cache.begin());
+    }
 
-            ++currentIndex;
-            return false;
-            
-        }
-    };
-}
+    ++currentIndex;
+    return false;
+  }
+};
+} // namespace caches
