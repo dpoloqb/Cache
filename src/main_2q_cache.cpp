@@ -15,11 +15,6 @@ int main() {
     return 1;
   }
 
-  if (cacheSize < 1) {
-    std::cerr << "Not valid cache" << std::endl;
-    return 1;
-  }
-
   if (nItems < 1) {
     std::cerr << "Incorrect number of items";
     return 1;

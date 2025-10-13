@@ -28,7 +28,7 @@ private:
   std::unordered_map<KeyT, ListIt> hash_A1in;
   std::unordered_map<KeyT, A1outIt> hash_A1out;
 
-  template <typename QTy> inline bool isFull(QTy &Q, size_t refSize) const {
+  template <typename QTy> bool isFull(QTy &Q, size_t refSize) const {
     return (Q.size() == refSize);
   }
 
@@ -90,6 +90,7 @@ private:
         hash_A1out.erase(cache_A1out.back());
         cache_A1out.pop_back();
       }
+      
       cache_A1out.emplace_front(cache_A1in.back().first);
       hash_A1out.emplace(cache_A1in.back().first, cache_A1out.begin());
       hash_A1in.erase(cache_A1in.back().first);
@@ -102,7 +103,11 @@ private:
 public:
   TwoQueuesCache(size_t cacheSize)
       : cacheSize_(cacheSize), A1in_size_(cacheSize / 2),
-        Am_size_(cacheSize - A1in_size_), A1out_size_(cacheSize * 2) {}
+        Am_size_(cacheSize - A1in_size_), A1out_size_(cacheSize * 2) {
+    if (cacheSize < 2) {
+      throw std::invalid_argument("Not valid cache");
+    }
+  }
 
   template <typename F> bool lookup_update(KeyT key, F slow_get_page) {
     if (check_Am(key))
@@ -129,7 +134,6 @@ private:
 
   std::unordered_map<KeyT, ListIt> hash;
 
-  std::vector<KeyT> requests_;
   std::unordered_map<KeyT, std::vector<size_t>> key_positions;
 
   ConstListIt find_victim() const {
@@ -163,16 +167,14 @@ private:
   }
 
 public:
-  IdealCache(size_t cacheSize, const std::vector<KeyT> &requests)
-      : cacheSize_(cacheSize), requests_(requests) {
-    for (size_t i = 0; i < requests_.size(); ++i) {
-      key_positions[requests_[i]].push_back(i);
+  IdealCache(size_t cacheSize, const std::unordered_map<KeyT, std::vector<size_t>>& key_positions_)
+      : cacheSize_(cacheSize), key_positions(key_positions_) {
+    if (cacheSize < 1) {
+      throw std::invalid_argument("Not valid cache");
     }
   }
 
   template <typename F> bool lookup_update(KeyT key, F slow_get_page) {
-    if (currentIndex >= requests_.size())
-      throw std::out_of_range("No more requests to process");
 
     auto hit_cache = hash.find(key);
     if (hit_cache != hash.end()) {

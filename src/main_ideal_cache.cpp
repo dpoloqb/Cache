@@ -1,5 +1,6 @@
 #include "caches.hpp"
 #include <iostream>
+#include <unordered_map>
 #include <vector>
 
 int slow_get_page_int(int key) { return key; }
@@ -15,17 +16,13 @@ int main() {
     return 1;
   }
 
-  if (cacheSize < 1) {
-    std::cerr << "Not valid cache" << std::endl;
-    return 1;
-  }
-
   if (nItems < 1) {
     std::cerr << "Incorrect number of items";
     return 1;
   }
 
   std::vector<int> requests;
+  std::unordered_map<int, std::vector<size_t>> key_positions_;
 
   for (size_t i = 0; i != nItems; ++i) {
     int num = 0;
@@ -35,9 +32,9 @@ int main() {
       return 1;
     }
     requests.push_back(num);
+    key_positions_[num].push_back(i);
   }
-
-  caches::IdealCache<int> c{cacheSize, requests};
+  caches::IdealCache<int> c{cacheSize, key_positions_};
 
   for (int i = 0; i < nItems; ++i) {
     if (c.lookup_update(requests[i], slow_get_page_int))
