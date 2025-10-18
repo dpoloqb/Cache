@@ -36,7 +36,7 @@ int main() {
   }
   caches::IdealCache<int> c{cacheSize, key_positions_};
 
-  for (int i = 0; i < nItems; ++i) {
+  for (size_t i = 0; i < nItems; ++i) {
     if (c.lookup_update(requests[i], slow_get_page_int))
       hits += 1;
   }

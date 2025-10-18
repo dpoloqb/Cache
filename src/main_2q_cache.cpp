@@ -22,7 +22,7 @@ int main() {
 
   caches::TwoQueuesCache<int> c{cacheSize};
 
-  for (int i = 0; i < nItems; ++i) {
+  for (size_t i = 0; i < nItems; ++i) {
     int q;
     std::cin >> q;
     if (!std::cin.good()) {

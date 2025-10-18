@@ -168,7 +168,7 @@ private:
 
 public:
   IdealCache(size_t cacheSize, const std::unordered_map<KeyT, std::vector<size_t>>& key_positions_)
-      : cacheSize_(cacheSize), key_positions(key_positions_) {
+      : cacheSize_(cacheSize), key_positions(std::move(key_positions_)) {
     if (cacheSize < 1) {
       throw std::invalid_argument("Not valid cache");
     }
